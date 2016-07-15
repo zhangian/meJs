@@ -92,7 +92,29 @@ function partial(f/*, ...*/){
 		for(; i<a.length; i++){
 			if(a[i]===undefined) a[i]=arguments[j++];
 		a=a.concat(array(arguments, j));
-		return f.apply(this, a);	
+		return f.apply(this, a);
 		}
 	}
-}
+};
+
+function memorize(f){//返回f（） 的带有记忆功能的版本
+	var cache={};
+
+	return function(){
+		var key=arguments.length + Array.prototype.join.call(arguments, '');
+		if(key in cache) return cache[key];
+		else return cache[key]=f.apply(this, arguments);
+	}
+
+};
+
+function inherit(p){
+	if(p==null) throw TypeError();
+	if(Object.cretat) return Object.cretat(p);
+	var t=typeof p;
+	if(t!=='object'&&t!=='function') throw TypeError();
+
+	function f(){};
+	f.prototype=p;
+	return new f();
+};
