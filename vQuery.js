@@ -208,24 +208,24 @@ function typeAndVule(x){ //9.5.2 constructor 属性检测
 
 };
 
-function type(o){  //9-4 以字符串的形式返回o的类型
+function type(o){  //9-4 以字符串的形式返回o的类型//
 
-	var t, c, n; //type, class, name
-	//处理 null 和NaN的情况
+	var t, c, n; //type, class, name//
+	//处理 null 和NaN的情况//
 	if(o===null) return 'null';
 	if(o!==o) return 'NaN';
 
-	//返回typeof 的值不是Object 则使用这个值
+	//返回typeof 的值不是Object 则使用这个值//
 	if((c=classof(o)) !=='Object') return c;
 
-	//如果对象构造函数的名字存在的话，则返回它
+	//如果对象构造函数的名字存在的话，则返回它//
 	if(o.constructor && typeof o.constructor==='function' && (n=o.constructor.getName())){ return n}
 
-	//其他的类型都无法判别，一律返回object
+	//其他的类型都无法判别，一律返回object//
 	return 'Object';
 }
 
-function classof(o){ //返回对象的类
+function classof(o){ //返回对象的类//
 	return Object.prototype.toString.call(o).slice(8, -1)
 };
 
@@ -250,3 +250,110 @@ function quacks(o/*, ... */){
 	}
 	return true;
 };
+
+//值的任意集合 
+//这是一个构造函数 集合数据保存在对象的属性里， 集合中值的个数//
+function Set(){  
+	this.values={};
+	this.n=0;
+	this.add.apply(this, arguments); //把所有参数都添加进这个集合
+}
+
+//将每个参数都添加至集合中//
+Set.prototype.add=function(){
+	for(var i=0; i<arguments.length; i++){
+		var val=arguments[i], str=Set._v2s(val);
+
+		if(!this.values.hasOwnProperty(str)){
+			this.values[str]=val;
+			this.n++;
+		}
+
+	}
+	return this;
+};
+
+//从集合删除元素，这些元素由参数指定//
+Set.prototype.remove=function(){
+	for(var i=0; i<arguments.length; i++){
+		var str=Set._v2s(arguments[i]);
+		if(this.values.hasOwnProperty(str)){
+			delete this.values[str];
+			this.n--;
+		}
+	}
+	return this;
+};
+
+//如果集合包含这个值，则返回true 否则，返回false//
+Set.prototype.contains=function(values){
+	return this.values.hasOwnProperty(Set._v2s(value));
+};
+
+//返回集合的大小//
+Set.prototype.size=function(){
+	return this.n;
+};
+
+//遍历集合中的所有元素，在指定的上下文中调用f//
+Set.prototype.foreach=function(f, context){
+	for(var s in this.values){
+		if(this.values.hasOwnProperty(s))
+		f.call(context, this.values[s]);
+	}
+};
+
+//这是一个内部函数，用以将任意JavaScript值和唯一的字符串对应起来//
+Set._v2s=function(val){
+	switch(val){
+		case undefined: return 'u';
+		case null: return 'n';
+		case true: return 't';
+		case false: return 'f';
+		default:switch(typeof val){
+			case 'number': return '#'+val;
+			case 'string': return '"'+val;
+			default: return '@'+objectId(val);
+		}
+	}
+
+	function objectId(o){
+		var prop='[**objectid**]';
+		if(!o.hasOwnProperty(prop)){
+			o[prop]=Set._v2s.next++;
+
+		}
+		return o[prop];
+	}
+};
+
+function enumeration(namesToValues){
+	//
+	var enumeration=function(){ throw 'can\'t instantiate Enumerations'; };
+	var proto=enumeration.prototype={
+		constructor:enumeration,
+		toString:function(){return this.name; },
+		valueOf:function(){ return this.value; },
+		toJSON:function(){ return this.name; }
+	};
+
+	//用以存放枚举对象的数组
+	enumeration.values=[];
+
+	//现在创建新类型的实例
+	for(name in namesToValues){
+		var e = inherit(proto);
+		e.name=name;
+		e.value=namesToValues[name];
+		enumeration[name]=e;
+		enumeration.values.push(e);
+	}
+
+	//一个类方法，用来对类的实例进行迭代
+	enumeration.foreach=function(f, c){
+		for(var i=0; i<this.values.length; i++){
+			f.call(c, this.value[i]);
+		}
+	};
+	return enumeration;
+}
