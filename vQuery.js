@@ -1,3 +1,4 @@
+'use strict';
 function isFunction(x) {//判断是否是真正的
 	return Object.prototype.toString.call(x) === '[object Function]';
 };
@@ -120,7 +121,7 @@ function inherit(p) { //
 };
 
 function extend(o, p) {//扩展
-	for (prop in p) {
+	for (var prop in p) {
 		o[prop] = p[prop]
 	}
 	return o;
@@ -237,7 +238,7 @@ function quacks(o/*, ... */){
 			case 'string':
 				 if(typeof o[arg] !=='function') return false;
 				 continue;
-			
+
 			case 'function':
 				  arg=arg.prototype;
 
@@ -251,9 +252,9 @@ function quacks(o/*, ... */){
 	return true;
 };
 
-//值的任意集合 
+//值的任意集合
 //这是一个构造函数 集合数据保存在对象的属性里， 集合中值的个数//
-function Set(){  
+function Set(){
 	this.values={};
 	this.n=0;
 	this.add.apply(this, arguments); //把所有参数都添加进这个集合
@@ -352,8 +353,197 @@ function enumeration(namesToValues){
 	//一个类方法，用来对类的实例进行迭代
 	enumeration.foreach=function(f, c){
 		for(var i=0; i<this.values.length; i++){
-			f.call(c, this.value[i]);
+			f.call(c, this.values[i]);
 		}
 	};
 	return enumeration;
+};
+
+extend(Set.prototype, {
+
+	toString:function(){
+		var s='{',
+		i=0;
+		this.foreach(function(v){ s+=((i++>0) ? ',' :'') +v; });
+		return s+'}';
+
+	},
+	//类似toString， 但是对于所有的值都将调用toLocalString（）
+	toLocalString:function(){
+		var s='{', i=0;
+		this.foreach(function(v){
+			if(i++>0) s+=', ';
+			if(v==null) s+=v;
+			else s+=v.toLocalString();
+		})
+
+		return s+ '}';
+	},
+	//将集合转换为值数组
+	toArray:function(){
+		var a=[];
+		this.foreach(function(v){
+			a.push(v);
+		});
+		return a;
+	}
+});
+
+//对于要从JSON转为字符串的集合都被当做数组来对待
+Set.prototype.toJSON=Set.prototype.toArray;
+
+Set.prototype.equals=function(that){
+	if(this===that) return true;
+
+	//如果that 对象不是集合，它和this不相等
+	//我们用到instanceof 使得这个方法可以用于set的任何子类
+	//或者可以通过 this.constructor==that.constructor 来加强检查的严格程度
+	if(!(that instanceof Set)) return false;
+
+	if(this.size() != that.size()) return false;
+
+	try{
+		this.foreach(function(v){ if(!that.contains(v)) throw false; });
+		return true;
+	}catch(x){
+		if(x===false) return false;
+		throw x;
+	}
+};
+
+var generic={
+	toString:function(){
+		var s='[';
+		var n=0;
+		if(this.constructor && this.constructor.name)
+		s+=this.constructor.name + ': ';
+
+		for(var name in this){
+			if(!this.hawOwnProperty(name)) continue;
+			var value=this[name];
+			if(typeof value ==='function') continue;
+			if(n++) s+=', ';
+			s+=name + '=' + value;
+		}
+
+		return s+']';
+
+	},
+	//通过比较this和that的构造函数和实例属性来判断它们是否相等
+	//这种方法只适合于那些实例属性是原始值的情况，原始值可以通过‘===’来比较
+	//这里还处理一种特殊情况，就是忽略有set类添加的特殊属性
+
+	equals:function(that){
+		if(that==null) return false;
+		if(this.constructor !==that.constructor) return false;
+		for(var name in this){
+			if(name ==="|**objectid**|") continue;
+			if(!this.hasOwnProperty(name)) continue;
+			if(this[name] !==that[name]) return false;
+		}
+		return true;
+	}
+};
+
+function Range(from, to){
+	//不要将端点保存为对象的属性，
+	//相反定义存取器函数来返回端点的值
+	//这些值都保存在闭包中
+
+	this.from=function(){ return from;}
+	this.to  =function(){ return to ;}
+
 }
+
+Range.prototype={
+	constructor:Range,
+
+	includes:function(x){ return this.from() <= x && x<=this.to()},
+
+	foreach:function(f){
+		for(var x=Math.ceil(this.from()), max=this.to(); x<=max; x++) f(x);
+	},
+
+	toString:function(){ return '(' +this.from() + '...' +this.to() +')'}
+}
+
+//ajax
+var ajax = (function () {
+
+            function createXhr() {
+                var xmlhttp;
+                if (window.XMLHttpRequest) {
+                    var xhr = new XMLHttpRequest();
+                }
+                return xhr;
+            }
+
+            function serializeData(option) {
+                var data = option.data, dataT = [], sendData = "";
+                if (data) {
+                    if (typeof data === "String") {
+                        sendData = data;
+                    } else {
+                        for (var x in data) {
+                            dataT.push(x + "=" + data[x]);
+                        }
+                        sendData = dataT.join("&");
+                    }
+                }
+                return sendData;
+            }
+
+            function ajax(option) {
+
+                var xhr = createXhr(), x;
+
+                if (!xhr) {
+                    return;
+                }
+
+                var async = typeof option.async === "undefined" ? true : option.async;
+
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState == 4) {
+                        if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304) {
+                            if (typeof option.success === "function") {
+                                option.success(xhr.responseText);
+                            }
+                        } else {
+                            if (typeof option.error === "function") {
+                                option.error(xhr);
+                            }
+                        }
+
+                    }
+                }
+
+                xhr.open(option.method, option.url, async);
+
+                if (option.header) {
+                    for (x in option.header) {
+                        xhr.setRequestHeader(x, option.header[x]);
+                    }
+                }
+
+                var sendData = serializeData(option);
+
+                xhr.send(sendData);
+            }
+
+            return ajax;
+
+        })();
+
+        ajax({
+            url: "/meJs/README.md",
+            method: "GET",
+            data: {name: "贺林"},
+            header: {'Content-Type': 'application/x-www-form-urlencoded','Content-Type':'text/xml'},
+            success: function (data) {
+                console.log(data)
+            },
+            error: function (xhr) {
+                console.log(xhr);
+            }
+        });
